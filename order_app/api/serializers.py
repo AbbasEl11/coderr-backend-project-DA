@@ -7,7 +7,8 @@ from offer_app.models import OfferDetail
 
 class OrderSerializer(serializers.ModelSerializer):
     offer_detail_id = serializers.PrimaryKeyRelatedField(
-        queryset=OfferDetail.objects.all(), source='offer_detail')
+        queryset=OfferDetail.objects.all(), source='offer_detail', error_messages={
+            'does_not_exist': 'Offer detail with the given ID does not exist.'})
 
     title = serializers.CharField(source='offer_detail.title', read_only=True)
     revisions = serializers.IntegerField(
@@ -20,7 +21,9 @@ class OrderSerializer(serializers.ModelSerializer):
         source='offer_detail.features', read_only=True)
     offer_type = serializers.CharField(
         source='offer_detail.offer_type', read_only=True)
-
+    
+    status = serializers.CharField(required=False)
+    
     class Meta:
         model = Order
         fields = [
@@ -38,8 +41,46 @@ class OrderSerializer(serializers.ModelSerializer):
             'created_at',
             'updated_at'
         ]
-        read_only_fields = ['id', 'customer_user', 'business_user', 'created_at', 'updated_at', 'title',
+        read_only_fields = ['id', 'customer_user', 'business_user', 'created_at', 'updated_at', 'tite',
                             'revisions', 'delivery_time_in_days', 'price', 'features', 'offer_type']
+
+    def validate(self, attrs):
+        attrs = super().validate(attrs)
+
+        request = self.context.get('request')
+        view = self.context.get('view')
+        method = getattr(request, 'method', None) 
+        action = getattr(view, 'action', None)
+        initial = self.initial_data or {}
+
+        if method == 'POST' and action == 'create':
+            allowed = required = {'offer_detail_id'}
+        elif method == 'PATCH' and action == 'partial_update':
+            allowed = required = {'status'}
+        else:
+            return attrs
+        
+        sent = set(initial)
+        errors = {}
+
+        for field in sent - allowed:
+            errors.setdefault(field, []).append("This field is not allowed.")
+
+        for field in required - sent:
+            errors.setdefault(field, []).append("This field is required.")
+
+        status_values = initial.get('status')
+
+        if status_values is not None:
+            valid_statuses = [choice[0] for choice in Order.status_choices]
+
+            if status_values not in valid_statuses:
+                errors.setdefault('status', []).append(
+                    f"Invalid status '{status_values}'. Valid statuses are: {', '.join(valid_statuses)}."
+                )
+        if errors:
+            raise serializers.ValidationError(errors)
+        return attrs
 
     def create(self, validated_data):
         request = self.context.get('request')
@@ -63,3 +104,5 @@ class OrderSerializer(serializers.ModelSerializer):
             return data
 
         return data
+
+     
