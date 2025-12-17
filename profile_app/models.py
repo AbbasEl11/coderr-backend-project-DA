@@ -1,10 +1,15 @@
 from django.contrib.auth.models import User
 from django.db import models
 
-# Create your models here.
-
 
 class Profile(models.Model):
+    """
+    User profile model extending Django's User model.
+
+    Stores additional user information including personal details,
+    contact information, and user type (customer or business).
+    """
+
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     first_name = models.CharField(max_length=30, null=True, blank=True)
     last_name = models.CharField(max_length=30, null=True, blank=True)
@@ -16,3 +21,7 @@ class Profile(models.Model):
     type = models.CharField(max_length=50, choices=[(
         'customer', 'customer'), ('business', 'business')], default='customer')
     created_at = models.DateTimeField(auto_now_add=True)
+    class Meta:
+        verbose_name = 'Profile'
+        verbose_name_plural = 'Profiles'
+        ordering = ['-created_at']

@@ -1,8 +1,14 @@
+"""
+Tests for user login functionality.
+"""
 from rest_framework.test import APITestCase
 from django.urls import reverse
 
 
 class LoginTests(APITestCase):
+    """
+    Test cases for user authentication and login endpoints.
+    """
     def test_login_success(self):
         """Test successful user login after registration - status code 200"""
         register_url = reverse('registration')

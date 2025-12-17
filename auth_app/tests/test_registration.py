@@ -3,9 +3,15 @@ from django.urls import reverse
 
 
 class RegistrationTests(APITestCase):
+    """Test suite for user registration endpoint."""
 
     def test_user_registration_customer(self):
-        """Test successful customer registration with status code 201"""
+        """
+        Test successful customer user registration.
+        
+        Verifies customer registration with valid credentials returns
+        201 status code and authentication token.
+        """
         url = reverse('registration')
 
         data = {
@@ -133,10 +139,8 @@ class RegistrationTests(APITestCase):
             'type': 'customer'
         }
 
-        # First registration
         self.client.post(url, data, format='json')
 
-        # Try to register with same username
         data['email'] = 'duplicate2@example.com'
         response = self.client.post(url, data, format='json')
 

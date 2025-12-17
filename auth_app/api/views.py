@@ -1,19 +1,38 @@
 from django.contrib.auth.models import User
-
-from rest_framework.authtoken.models import Token
-from rest_framework.response import Response
-from rest_framework.permissions import AllowAny
 from rest_framework import generics, mixins, status
+from rest_framework.authtoken.models import Token
+from rest_framework.permissions import AllowAny
+from rest_framework.response import Response
 
 from .serializers import RegistrationSerializer, LoginSerializer
 
 
 class RegistrationView(generics.CreateAPIView):
+    """
+    API view for user registration.
+
+    Allows any user to register by providing username, email, password,
+    repeated_password, and user type (customer or business).
+    Returns an authentication token upon successful registration.
+    """
+
     serializer_class = RegistrationSerializer
     permission_classes = [AllowAny]
     queryset = User.objects.all()
 
     def create(self, request):
+        """
+        Create a new user account.
+
+        Args:
+            request: HTTP request containing user registration data
+
+        Returns:
+            Response: JSON containing authentication token, username, email, and user_id
+
+        Raises:
+            ValidationError: If registration data is invalid
+        """
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
@@ -31,11 +50,32 @@ class RegistrationView(generics.CreateAPIView):
 
 
 class LoginView(generics.GenericAPIView):
+    """
+    API view for user authentication.
+
+    Allows any user to login by providing username and password.
+    Returns an authentication token upon successful login.
+    """
+
     serializer_class = LoginSerializer
     permission_classes = [AllowAny]
     queryset = User.objects.all()
 
     def post(self, request, *args, **kwargs):
+        """
+        Authenticate user and return authentication token.
+
+        Args:
+            request: HTTP request containing login credentials
+            *args: Variable length argument list
+            **kwargs: Arbitrary keyword arguments
+
+        Returns:
+            Response: JSON containing authentication token, username, email, and user_id
+
+        Raises:
+            ValidationError: If credentials are invalid
+        """
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 

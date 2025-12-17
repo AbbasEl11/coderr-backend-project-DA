@@ -1,21 +1,34 @@
-from django.shortcuts import get_object_or_404
-from rest_framework import status
-from rest_framework.permissions import IsAuthenticated, IsAdminUser
-from django.db.models import Q
-from rest_framework import viewsets, views
-from order_app.api.serializers import OrderSerializer
-from rest_framework.response import Response
-from order_app.models import Order
-from order_app.api.permissions import IsCustomer, IsBusiness
 from django.contrib.auth.models import User
+from django.db.models import Q
+from django.shortcuts import get_object_or_404
+from rest_framework import status, views, viewsets
+from rest_framework.permissions import IsAdminUser, IsAuthenticated
+from rest_framework.response import Response
+
+from ..models import Order
+from .permissions import IsBusiness, IsCustomer
+from .serializers import OrderSerializer
 
 
 class OrderViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for managing orders.
+
+    Provides CRUD operations with role-based permissions.
+    Customers can create orders, business users can update status, admins can delete.
+    """
+
     permission_classes = [IsAuthenticated]
     serializer_class = OrderSerializer
     queryset = None
 
     def get_permissions(self):
+        """
+        Get permission classes based on action.
+
+        Returns:
+            list: Permission instances for the current action
+        """
         if self.action == 'create':
             self.permission_classes = [IsAuthenticated, IsCustomer]
         elif self.action in ['update', 'partial_update',]:
@@ -27,6 +40,12 @@ class OrderViewSet(viewsets.ModelViewSet):
         return super().get_permissions()
 
     def get_queryset(self):
+        """
+        Get filtered queryset based on action and user.
+
+        Returns:
+            QuerySet: Orders filtered by user involvement (customer or business)
+        """
         action = self.action
 
         if action == 'list':
@@ -38,9 +57,28 @@ class OrderViewSet(viewsets.ModelViewSet):
             return Order.objects.all()
         
 class CountOrdersView(views.APIView):
+    """
+    API view to count in-progress orders for a business user.
+
+    Returns the number of orders with 'in_progress' status for the specified business user.
+    """
+
     permission_classes = [IsAuthenticated]
     
     def get(self, request, pk):
+        """
+        Get count of in-progress orders for a business user.
+
+        Args:
+            request: HTTP request
+            pk: User ID of the business user
+
+        Returns:
+            Response: JSON with order_count field
+
+        Raises:
+            Http404: If user doesn't exist or is not a business user
+        """
         user = get_object_or_404(User, pk=pk)
 
         if user.profile.type != 'business':
@@ -52,10 +90,28 @@ class CountOrdersView(views.APIView):
 
 
 class CompletedOrdersCountView(views.APIView):
+    """
+    API view to count completed orders for a business user.
+
+    Returns the number of orders with 'completed' status for the specified business user.
+    """
+
     permission_classes = [IsAuthenticated]
 
     def get(self, request, pk):
+        """
+        Get count of completed orders for a business user.
 
+        Args:
+            request: HTTP request
+            pk: User ID of the business user
+
+        Returns:
+            Response: JSON with completed_order_count field
+
+        Raises:
+            Http404: If user doesn't exist or is not a business user
+        """
         user = get_object_or_404(User, pk=pk)
 
         if user.profile.type != 'business':

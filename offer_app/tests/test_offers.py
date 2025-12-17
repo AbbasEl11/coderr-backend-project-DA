@@ -1,3 +1,6 @@
+"""
+Tests for offer management functionality.
+"""
 from rest_framework.test import APITestCase
 from django.urls import reverse
 from django.contrib.auth.models import User
@@ -5,25 +8,19 @@ from offer_app.models import Offer, OfferDetail
 from profile_app.models import Profile
 
 
-# ============================================
-# HAPPY PATH TESTS
-# ============================================
-
 class ListOffersHappyPathTests(APITestCase):
-    """Tests for listing offers - Happy Paths"""
+    """Tests for listing offers - happy paths."""
 
     def setUp(self):
-        # Create business user with offers
+        """Set up test data for list offers tests."""
         self.business_user = User.objects.create_user(
             username='businessuser', password='testpass123')
         Profile.objects.create(user=self.business_user, type='business')
 
-        # Create customer user
         self.customer_user = User.objects.create_user(
             username='customer', password='testpass123')
         Profile.objects.create(user=self.customer_user, type='customer')
 
-        # Create test offers
         self.offer1 = Offer.objects.create(
             user=self.business_user,
             title="Web Development",
@@ -91,11 +88,58 @@ class ListOffersHappyPathTests(APITestCase):
         self.assertEqual(response.status_code, 200)
         self.assertGreater(len(response.data['results']), 0)
 
+    def test_filter_offers_by_min_price(self):
+        """Test that filtering offers by minimum price works correctly."""
+        url = reverse('offers-list')
+        response = self.client.get(url, {'min_price': 150}, format='json')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('results', response.data)
+        for offer in response.data['results']:
+            self.assertGreaterEqual(offer['min_price'], 150)
+
+    def test_filter_offers_by_max_delivery_time(self):
+        """Test that filtering offers by maximum delivery time works correctly."""
+        url = reverse('offers-list')
+        response = self.client.get(url, {'max_delivery_time': 4}, format='json')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('results', response.data)
+        for offer in response.data['results']:
+            self.assertLessEqual(offer['min_delivery_time'], 4)
+
+    def test_order_offers_by_field(self):
+        """Test that ordering offers by specific field works correctly."""
+        url = reverse('offers-list')
+
+        response = self.client.get(url, {'ordering': 'created_at'}, format='json')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('results', response.data)
+        
+    def test_order_offers_by_title(self):
+        """Test that ordering offers by title works correctly."""
+        url = reverse('offers-list')
+        response = self.client.get(url, {'ordering': 'title'}, format='json')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('results', response.data)
+
+    def test_custom_page_size(self):
+        """Test that custom page_size parameter works correctly."""
+        url = reverse('offers-list')
+        response = self.client.get(url, {'page_size': 1}, format='json')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('results', response.data)
+        self.assertLessEqual(len(response.data['results']), 1)
+
 
 class RetrieveOfferHappyPathTests(APITestCase):
-    """Tests for retrieving single offer - Happy Paths"""
+    """Tests for retrieving single offer - happy paths."""
 
     def setUp(self):
+        """Set up test data for retrieve offer tests."""
         self.business_user = User.objects.create_user(
             username='businessuser', password='testpass123')
         Profile.objects.create(user=self.business_user, type='business')
@@ -120,7 +164,7 @@ class RetrieveOfferHappyPathTests(APITestCase):
         )
 
     def test_retrieve_offer_as_authenticated_user(self):
-        """Authenticated users can retrieve a specific offer"""
+        """Test that authenticated users can retrieve a specific offer."""
         self.client.force_authenticate(user=self.customer_user)
         url = reverse('offers-detail', kwargs={'pk': self.offer.pk})
         response = self.client.get(url, format='json')
@@ -131,7 +175,7 @@ class RetrieveOfferHappyPathTests(APITestCase):
         self.assertIn('details', response.data)
 
     def test_retrieve_offer_includes_user_info(self):
-        """Retrieved offer includes user information"""
+        """Test that retrieved offer includes user information."""
         self.client.force_authenticate(user=self.customer_user)
         url = reverse('offers-detail', kwargs={'pk': self.offer.pk})
         response = self.client.get(url, format='json')
@@ -141,9 +185,10 @@ class RetrieveOfferHappyPathTests(APITestCase):
 
 
 class CreateOfferHappyPathTests(APITestCase):
-    """Tests for creating offers - Happy Paths"""
+    """Tests for creating offers - happy paths."""
 
     def setUp(self):
+        """Set up test data for create offer tests."""
         self.business_user = User.objects.create_user(
             username='businessuser', password='testpass123')
         Profile.objects.create(user=self.business_user, type='business')
@@ -180,7 +225,7 @@ class CreateOfferHappyPathTests(APITestCase):
         }
 
     def test_create_offer_as_business_user(self):
-        """Business user can successfully create an offer"""
+        """Test that business user can successfully create an offer."""
         self.client.force_authenticate(user=self.business_user)
         url = reverse('offers-list')
         response = self.client.post(url, self.offer_data, format='json')
@@ -192,13 +237,12 @@ class CreateOfferHappyPathTests(APITestCase):
                          self.offer_data['description'])
         self.assertEqual(len(response.data['details']), 3)
 
-        # Verify offer was created in database
         offer_exists = Offer.objects.filter(
             title=self.offer_data['title']).exists()
         self.assertTrue(offer_exists)
 
     def test_create_offer_sets_correct_user(self):
-        """Created offer is assigned to the authenticated user"""
+        """Test that created offer is assigned to the authenticated user."""
         self.client.force_authenticate(user=self.business_user)
         url = reverse('offers-list')
         response = self.client.post(url, self.offer_data, format='json')
@@ -208,7 +252,7 @@ class CreateOfferHappyPathTests(APITestCase):
         self.assertEqual(offer.user, self.business_user)
 
     def test_create_offer_with_all_detail_types(self):
-        """Offer can be created with basic, standard, and premium details"""
+        """Test that offer can be created with basic, standard, and premium details."""
         self.client.force_authenticate(user=self.business_user)
         url = reverse('offers-list')
         response = self.client.post(url, self.offer_data, format='json')
@@ -225,9 +269,10 @@ class CreateOfferHappyPathTests(APITestCase):
 
 
 class UpdateOfferHappyPathTests(APITestCase):
-    """Tests for updating offers - Happy Paths"""
+    """Tests for updating offers - happy paths."""
 
     def setUp(self):
+        """Set up test data for update offer tests."""
         self.business_user = User.objects.create_user(
             username='businessuser', password='testpass123')
         Profile.objects.create(user=self.business_user, type='business')
@@ -248,7 +293,7 @@ class UpdateOfferHappyPathTests(APITestCase):
         )
 
     def test_update_offer_as_owner(self):
-        """Offer owner can update their offer"""
+        """Test that offer owner can update their offer."""
         self.client.force_authenticate(user=self.business_user)
         url = reverse('offers-detail', kwargs={'pk': self.offer.pk})
         updated_data = {
@@ -272,7 +317,7 @@ class UpdateOfferHappyPathTests(APITestCase):
         self.assertEqual(response.data['description'], "Updated Description")
 
     def test_partial_update_offer_as_owner(self):
-        """Offer owner can partially update their offer"""
+        """Test that offer owner can partially update their offer."""
         self.client.force_authenticate(user=self.business_user)
         url = reverse('offers-detail', kwargs={'pk': self.offer.pk})
         partial_data = {
@@ -286,9 +331,10 @@ class UpdateOfferHappyPathTests(APITestCase):
 
 
 class DeleteOfferHappyPathTests(APITestCase):
-    """Tests for deleting offers - Happy Paths"""
+    """Tests for deleting offers - happy paths."""
 
     def setUp(self):
+        """Set up test data for delete offer tests."""
         self.business_user = User.objects.create_user(
             username='businessuser', password='testpass123')
         Profile.objects.create(user=self.business_user, type='business')
@@ -300,37 +346,41 @@ class DeleteOfferHappyPathTests(APITestCase):
         )
 
     def test_delete_offer_as_owner(self):
-        """Offer owner can delete their offer"""
+        """Test that offer owner can delete their offer."""
         self.client.force_authenticate(user=self.business_user)
         url = reverse('offers-detail', kwargs={'pk': self.offer.pk})
         response = self.client.delete(url)
 
         self.assertEqual(response.status_code, 204)
+        self.assertEqual(response.content, b'')
 
-        # Verify offer was deleted
         offer_exists = Offer.objects.filter(pk=self.offer.pk).exists()
         self.assertFalse(offer_exists)
 
 
-# ============================================
-# UNHAPPY PATH TESTS
-# ============================================
-
 class ListOffersUnhappyPathTests(APITestCase):
-    """Tests for listing offers - Unhappy Paths"""
+    """Tests for listing offers - unhappy paths."""
 
     def test_list_offers_with_invalid_page(self):
-        """Request with invalid page number returns appropriate response"""
+        """Test that request with invalid page number returns 404."""
         url = reverse('offers-list')
         response = self.client.get(url, {'page': 9999}, format='json')
 
         self.assertEqual(response.status_code, 404)
 
+    def test_list_offers_with_invalid_parameters(self):
+        """Test that request with invalid query parameters is handled properly."""
+        url = reverse('offers-list')
+        response = self.client.get(url, {'min_price': 'invalid'}, format='json')
+
+        self.assertIn(response.status_code, [400, 200])  
+
 
 class RetrieveOfferUnhappyPathTests(APITestCase):
-    """Tests for retrieving single offer - Unhappy Paths"""
+    """Tests for retrieving single offer - unhappy paths."""
 
     def setUp(self):
+        """Set up test data for retrieve offer unhappy path tests."""
         self.business_user = User.objects.create_user(
             username='businessuser', password='testpass123')
         Profile.objects.create(user=self.business_user, type='business')
@@ -346,14 +396,14 @@ class RetrieveOfferUnhappyPathTests(APITestCase):
         )
 
     def test_retrieve_offer_without_authentication(self):
-        """Unauthenticated users cannot retrieve a specific offer"""
+        """Test that unauthenticated users cannot retrieve a specific offer."""
         url = reverse('offers-detail', kwargs={'pk': self.offer.pk})
         response = self.client.get(url, format='json')
 
         self.assertEqual(response.status_code, 401)
 
     def test_retrieve_nonexistent_offer(self):
-        """Retrieving non-existent offer returns 404"""
+        """Test that retrieving non-existent offer returns 404."""
         self.client.force_authenticate(user=self.customer_user)
         url = reverse('offers-detail', kwargs={'pk': 99999})
         response = self.client.get(url, format='json')
@@ -362,9 +412,10 @@ class RetrieveOfferUnhappyPathTests(APITestCase):
 
 
 class CreateOfferUnhappyPathTests(APITestCase):
-    """Tests for creating offers - Unhappy Paths"""
+    """Tests for creating offers - unhappy paths."""
 
     def setUp(self):
+        """Set up test data for create offer unhappy path tests."""
         self.business_user = User.objects.create_user(
             username='businessuser', password='testpass123')
         Profile.objects.create(user=self.business_user, type='business')
@@ -389,14 +440,14 @@ class CreateOfferUnhappyPathTests(APITestCase):
         }
 
     def test_create_offer_without_authentication(self):
-        """Unauthenticated users cannot create offers"""
+        """Test that unauthenticated users cannot create offers."""
         url = reverse('offers-list')
         response = self.client.post(url, self.valid_offer_data, format='json')
 
         self.assertEqual(response.status_code, 401)
 
     def test_create_offer_as_customer_user(self):
-        """Customer users cannot create offers (only business users can)"""
+        """Test that customer users cannot create offers."""
         self.client.force_authenticate(user=self.customer_user)
         url = reverse('offers-list')
         response = self.client.post(url, self.valid_offer_data, format='json')
@@ -404,7 +455,7 @@ class CreateOfferUnhappyPathTests(APITestCase):
         self.assertEqual(response.status_code, 403)
 
     def test_create_offer_without_title(self):
-        """Creating offer without title fails"""
+        """Test that creating offer without title fails."""
         self.client.force_authenticate(user=self.business_user)
         url = reverse('offers-list')
         invalid_data = self.valid_offer_data.copy()
@@ -415,7 +466,7 @@ class CreateOfferUnhappyPathTests(APITestCase):
         self.assertIn('title', response.data)
 
     def test_create_offer_without_description(self):
-        """Creating offer without description fails"""
+        """Test that creating offer without description fails."""
         self.client.force_authenticate(user=self.business_user)
         url = reverse('offers-list')
         invalid_data = self.valid_offer_data.copy()
@@ -426,7 +477,7 @@ class CreateOfferUnhappyPathTests(APITestCase):
         self.assertIn('description', response.data)
 
     def test_create_offer_without_details(self):
-        """Creating offer without details fails"""
+        """Test that creating offer without details fails."""
         self.client.force_authenticate(user=self.business_user)
         url = reverse('offers-list')
         invalid_data = {
@@ -438,7 +489,7 @@ class CreateOfferUnhappyPathTests(APITestCase):
         self.assertEqual(response.status_code, 400)
 
     def test_create_offer_with_invalid_detail_type(self):
-        """Creating offer with invalid offer_type fails"""
+        """Test that creating offer with invalid offer_type fails."""
         self.client.force_authenticate(user=self.business_user)
         url = reverse('offers-list')
         invalid_data = self.valid_offer_data.copy()
@@ -448,7 +499,7 @@ class CreateOfferUnhappyPathTests(APITestCase):
         self.assertEqual(response.status_code, 400)
 
     def test_create_offer_with_negative_price(self):
-        """Creating offer with negative price fails"""
+        """Test that creating offer with negative price fails."""
         self.client.force_authenticate(user=self.business_user)
         url = reverse('offers-list')
         invalid_data = self.valid_offer_data.copy()
@@ -458,7 +509,7 @@ class CreateOfferUnhappyPathTests(APITestCase):
         self.assertEqual(response.status_code, 400)
 
     def test_create_offer_with_negative_delivery_time(self):
-        """Creating offer with negative delivery time fails"""
+        """Test that creating offer with negative delivery time fails."""
         self.client.force_authenticate(user=self.business_user)
         url = reverse('offers-list')
         invalid_data = self.valid_offer_data.copy()
@@ -469,9 +520,10 @@ class CreateOfferUnhappyPathTests(APITestCase):
 
 
 class UpdateOfferUnhappyPathTests(APITestCase):
-    """Tests for updating offers - Unhappy Paths"""
+    """Tests for updating offers - unhappy paths."""
 
     def setUp(self):
+        """Set up test data for update offer unhappy path tests."""
         self.business_user1 = User.objects.create_user(
             username='business1', password='testpass123')
         Profile.objects.create(user=self.business_user1, type='business')
@@ -500,7 +552,7 @@ class UpdateOfferUnhappyPathTests(APITestCase):
         )
 
     def test_update_offer_without_authentication(self):
-        """Unauthenticated users cannot update offers"""
+        """Test that unauthenticated users cannot update offers."""
         url = reverse('offers-detail', kwargs={'pk': self.offer.pk})
         updated_data = {
             "title": "Hacked Title",
@@ -512,7 +564,7 @@ class UpdateOfferUnhappyPathTests(APITestCase):
         self.assertEqual(response.status_code, 401)
 
     def test_update_offer_as_non_owner(self):
-        """Non-owner business user cannot update another user's offer"""
+        """Test that non-owner business user cannot update another user's offer."""
         self.client.force_authenticate(user=self.business_user2)
         url = reverse('offers-detail', kwargs={'pk': self.offer.pk})
         updated_data = {
@@ -534,7 +586,7 @@ class UpdateOfferUnhappyPathTests(APITestCase):
         self.assertEqual(response.status_code, 403)
 
     def test_update_offer_as_customer(self):
-        """Customer users cannot update offers"""
+        """Test that customer users cannot update offers."""
         self.client.force_authenticate(user=self.customer_user)
         url = reverse('offers-detail', kwargs={'pk': self.offer.pk})
         updated_data = {
@@ -547,7 +599,7 @@ class UpdateOfferUnhappyPathTests(APITestCase):
         self.assertEqual(response.status_code, 403)
 
     def test_update_nonexistent_offer(self):
-        """Updating non-existent offer returns 404"""
+        """Test that updating non-existent offer returns 404."""
         self.client.force_authenticate(user=self.business_user1)
         url = reverse('offers-detail', kwargs={'pk': 99999})
         updated_data = {
@@ -561,9 +613,10 @@ class UpdateOfferUnhappyPathTests(APITestCase):
 
 
 class DeleteOfferUnhappyPathTests(APITestCase):
-    """Tests for deleting offers - Unhappy Paths"""
+    """Tests for deleting offers - unhappy paths."""
 
     def setUp(self):
+        """Set up test data for delete offer unhappy path tests."""
         self.business_user1 = User.objects.create_user(
             username='business1', password='testpass123')
         Profile.objects.create(user=self.business_user1, type='business')
@@ -583,18 +636,17 @@ class DeleteOfferUnhappyPathTests(APITestCase):
         )
 
     def test_delete_offer_without_authentication(self):
-        """Unauthenticated users cannot delete offers"""
+        """Test that unauthenticated users cannot delete offers."""
         url = reverse('offers-detail', kwargs={'pk': self.offer.pk})
         response = self.client.delete(url)
 
         self.assertEqual(response.status_code, 401)
 
-        # Verify offer still exists
         offer_exists = Offer.objects.filter(pk=self.offer.pk).exists()
         self.assertTrue(offer_exists)
 
     def test_delete_offer_as_non_owner(self):
-        """Non-owner business user cannot delete another user's offer"""
+        """Test that non-owner business user cannot delete another user's offer."""
         self.client.force_authenticate(user=self.business_user2)
         url = reverse('offers-detail', kwargs={'pk': self.offer.pk})
         response = self.client.delete(url)
@@ -606,19 +658,18 @@ class DeleteOfferUnhappyPathTests(APITestCase):
         self.assertTrue(offer_exists)
 
     def test_delete_offer_as_customer(self):
-        """Customer users cannot delete offers"""
+        """Test that customer users cannot delete offers."""
         self.client.force_authenticate(user=self.customer_user)
         url = reverse('offers-detail', kwargs={'pk': self.offer.pk})
         response = self.client.delete(url)
 
         self.assertEqual(response.status_code, 403)
 
-        # Verify offer still exists
         offer_exists = Offer.objects.filter(pk=self.offer.pk).exists()
         self.assertTrue(offer_exists)
 
     def test_delete_nonexistent_offer(self):
-        """Deleting non-existent offer returns 404"""
+        """Test that deleting non-existent offer returns 404."""
         self.client.force_authenticate(user=self.business_user1)
         url = reverse('offers-detail', kwargs={'pk': 99999})
         response = self.client.delete(url)
@@ -627,9 +678,10 @@ class DeleteOfferUnhappyPathTests(APITestCase):
 
 
 class OfferPermissionsTests(APITestCase):
-    """Dedicated tests for permission classes"""
+    """Tests for offer permission classes."""
 
     def setUp(self):
+        """Set up test data for permission tests."""
         self.business_user = User.objects.create_user(
             username='businessuser', password='testpass123')
         Profile.objects.create(user=self.business_user, type='business')
@@ -642,7 +694,7 @@ class OfferPermissionsTests(APITestCase):
             username='noprofile', password='testpass123')
 
     def test_is_business_user_permission_with_business_user(self):
-        """IsBusinessUser permission allows business users"""
+        """Test that IsBusinessUser permission allows business users."""
         self.client.force_authenticate(user=self.business_user)
         url = reverse('offers-list')
         data = {
@@ -680,7 +732,7 @@ class OfferPermissionsTests(APITestCase):
         self.assertEqual(response.status_code, 201)
 
     def test_is_business_user_permission_with_customer_user(self):
-        """IsBusinessUser permission denies customer users"""
+        """Test that IsBusinessUser permission denies customer users."""
         self.client.force_authenticate(user=self.customer_user)
         url = reverse('offers-list')
         data = {
@@ -718,7 +770,7 @@ class OfferPermissionsTests(APITestCase):
         self.assertEqual(response.status_code, 403)
 
     def test_is_offer_owner_permission_with_owner(self):
-        """IsOfferOwner permission allows owner to modify"""
+        """Test that IsOfferOwner permission allows owner to modify."""
         offer = Offer.objects.create(
             user=self.business_user,
             title="Test",
@@ -732,7 +784,7 @@ class OfferPermissionsTests(APITestCase):
         self.assertEqual(response.status_code, 204)
 
     def test_is_offer_owner_permission_with_non_owner(self):
-        """IsOfferOwner permission denies non-owner"""
+        """Test that IsOfferOwner permission denies non-owner."""
         offer = Offer.objects.create(
             user=self.business_user,
             title="Test",
@@ -751,9 +803,10 @@ class OfferPermissionsTests(APITestCase):
 
 
 class OfferDetailViewTests(APITestCase):
-    """Tests for OfferDetailView endpoint"""
+    """Tests for OfferDetailView endpoint."""
 
     def setUp(self):
+        """Set up test data for offer detail view tests."""
         self.business_user = User.objects.create_user(
             username='businessuser', password='testpass123')
         Profile.objects.create(user=self.business_user, type='business')
@@ -778,7 +831,7 @@ class OfferDetailViewTests(APITestCase):
         )
 
     def test_get_offer_detail_as_authenticated_user(self):
-        """Authenticated users can retrieve offer detail"""
+        """Test that authenticated users can retrieve offer detail."""
         self.client.force_authenticate(user=self.customer_user)
         url = f'/api/offerdetails/{self.offer_detail.pk}/'
         response = self.client.get(url, format='json')
@@ -787,16 +840,19 @@ class OfferDetailViewTests(APITestCase):
         self.assertEqual(response.data['title'], "Basic Plan")
         self.assertEqual(response.data['revisions'], 1)
         self.assertEqual(response.data['price'], 100)
+        self.assertEqual(response.data['delivery_time_in_days'], 5)
+        self.assertEqual(response.data['offer_type'], 'basic')
+        self.assertIn('features', response.data)
 
     def test_get_offer_detail_without_authentication(self):
-        """Unauthenticated users cannot retrieve offer detail"""
+        """Test that unauthenticated users cannot retrieve offer detail."""
         url = f'/api/offerdetails/{self.offer_detail.pk}/'
         response = self.client.get(url, format='json')
 
         self.assertEqual(response.status_code, 401)
 
     def test_get_nonexistent_offer_detail(self):
-        """Retrieving non-existent offer detail returns 404"""
+        """Test that retrieving non-existent offer detail returns 404."""
         self.client.force_authenticate(user=self.customer_user)
         url = '/api/offerdetails/99999/'
         response = self.client.get(url, format='json')
@@ -805,10 +861,10 @@ class OfferDetailViewTests(APITestCase):
 
 
 class ModelStringRepresentationTests(APITestCase):
-    """Tests for model __str__ methods"""
+    """Tests for model __str__ methods."""
 
     def test_offer_str_representation(self):
-        """Offer __str__ returns title"""
+        """Test that Offer __str__ returns title."""
         user = User.objects.create_user(username='testuser', password='test')
         offer = Offer.objects.create(
             user=user,
@@ -818,7 +874,7 @@ class ModelStringRepresentationTests(APITestCase):
         self.assertEqual(str(offer), "Web Development Services")
 
     def test_offer_detail_str_representation(self):
-        """OfferDetail __str__ returns formatted string"""
+        """Test that OfferDetail __str__ returns formatted string."""
         user = User.objects.create_user(username='testuser', password='test')
         offer = Offer.objects.create(
             user=user,
@@ -838,18 +894,18 @@ class ModelStringRepresentationTests(APITestCase):
 
 
 class SerializerValidationTests(APITestCase):
-    """Tests for serializer validation and edge cases"""
+    """Tests for serializer validation and edge cases."""
 
     def setUp(self):
+        """Set up test data for serializer validation tests."""
         self.business_user = User.objects.create_user(
             username='businessuser', password='testpass123')
         Profile.objects.create(user=self.business_user, type='business')
 
     def test_update_offer_with_non_matching_offer_types(self):
-        """Updating offer with non-existing offer_type raises error"""
+        """Test that updating offer with non-existing offer_type raises error."""
         self.client.force_authenticate(user=self.business_user)
 
-        # Create offer with basic, standard, premium
         offer = Offer.objects.create(
             user=self.business_user,
             title="Original",
@@ -883,13 +939,10 @@ class SerializerValidationTests(APITestCase):
             offer_type="premium"
         )
 
-        # Try to update with a non-matching offer type
         url = reverse('offers-detail', kwargs={'pk': offer.pk})
 
-        # First delete one detail type to create a scenario
         OfferDetail.objects.filter(offer=offer, offer_type='premium').delete()
 
-        # Now try to update the premium type that doesn't exist
         updated_data = {
             "title": "Updated",
             "description": "Updated Description",
@@ -910,7 +963,7 @@ class SerializerValidationTests(APITestCase):
         self.assertIn('error', response.data)
 
     def test_update_offer_detail_without_offer_type(self):
-        """Updating offer detail without offer_type raises error"""
+        """Test that updating offer detail without offer_type raises error."""
         self.client.force_authenticate(user=self.business_user)
 
         offer = Offer.objects.create(
@@ -957,7 +1010,6 @@ class SerializerValidationTests(APITestCase):
                     "delivery_time_in_days": 3,
                     "price": 120,
                     "features": ["Feature"]
-                    # Missing offer_type
                 }
             ]
         }
@@ -966,7 +1018,7 @@ class SerializerValidationTests(APITestCase):
         self.assertEqual(response.status_code, 400)
 
     def test_create_offer_with_duplicate_offer_types(self):
-        """Creating offer with duplicate offer_types fails"""
+        """Test that creating offer with duplicate offer_types fails."""
         self.client.force_authenticate(user=self.business_user)
         url = reverse('offers-list')
         data = {
@@ -1004,7 +1056,7 @@ class SerializerValidationTests(APITestCase):
         self.assertEqual(response.status_code, 400)
 
     def test_offer_min_price_method(self):
-        """Offer min_price method returns correct value"""
+        """Test that Offer min_price method returns correct value."""
         user = User.objects.create_user(username='testuser', password='test')
         offer = Offer.objects.create(
             user=user,
@@ -1033,7 +1085,7 @@ class SerializerValidationTests(APITestCase):
         self.assertEqual(offer.min_price(), 100)
 
     def test_offer_min_delivery_time_method(self):
-        """Offer min_delivery_time method returns correct value"""
+        """Test that Offer min_delivery_time method returns correct value."""
         user = User.objects.create_user(username='testuser', password='test')
         offer = Offer.objects.create(
             user=user,

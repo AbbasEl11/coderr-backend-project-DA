@@ -1,5 +1,6 @@
 from django.contrib import admin
 from django.urls import path
+
 from profile_app.api.views import ProfileDetailView, ProfileListView
 
 
