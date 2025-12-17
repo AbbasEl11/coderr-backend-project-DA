@@ -10,7 +10,7 @@ from profile_app.models import Profile
 from offer_app.models import Offer
 
 class BaseInfoView(mixins.ListModelMixin, generics.GenericAPIView):
-
+    permission_classes = [AllowAny]
 
     def get(self, request, *args, **kwargs):
         review_count = Review.objects.all().count()

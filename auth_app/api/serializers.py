@@ -12,7 +12,10 @@ class RegistrationSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ['username', 'email', 'password', 'repeated_password', 'type']
-        extra_kwargs = {'password': {'write_only': True}}
+        extra_kwargs = {'password': {'write_only': True},
+                        'email': {'required': True},
+                        'username': {'required': True}
+                        }
 
     def save(self):
         pw = self.validated_data['password']

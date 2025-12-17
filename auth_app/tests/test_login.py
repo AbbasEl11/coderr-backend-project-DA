@@ -4,7 +4,7 @@ from django.urls import reverse
 
 class LoginTests(APITestCase):
     def test_login_success(self):
-        """Test successful user login after registration"""
+        """Test successful user login after registration - status code 200"""
         register_url = reverse('registration')
 
         registration_data = {
@@ -30,12 +30,22 @@ class LoginTests(APITestCase):
         self.assertEqual(response.data['email'], registration_data['email'])
         self.assertIn('user_id', response.data)
 
-    def test_login_failure(self):
-        """Test login failure with incorrect credentials."""
+    def test_login_wrong_password(self):
+        """Test login failure with incorrect password - status code 400"""
+        register_url = reverse('registration')
+
+        registration_data = {
+            'username': 'loginuser2',
+            'email': 'login2@mail.de',
+            'password': 'correctpassword123',
+            'repeated_password': 'correctpassword123',
+            'type': 'customer'
+        }
+        self.client.post(register_url, registration_data, format='json')
 
         login_url = reverse('login')
         login_data = {
-            'username': 'nonexistentuser',
+            'username': 'loginuser2',
             'password': 'wrongpassword'
         }
 
@@ -43,3 +53,50 @@ class LoginTests(APITestCase):
 
         self.assertEqual(response.status_code, 400)
         self.assertIn('error', response.data)
+
+    def test_login_nonexistent_user(self):
+        """Test login failure with non-existent username - status code 400"""
+        login_url = reverse('login')
+        login_data = {
+            'username': 'nonexistentuser',
+            'password': 'somepassword'
+        }
+
+        response = self.client.post(login_url, login_data, format='json')
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn('error', response.data)
+
+    def test_login_missing_username(self):
+        """Test login failure with missing username - status code 400"""
+        login_url = reverse('login')
+        login_data = {
+            'password': 'somepassword'
+        }
+
+        response = self.client.post(login_url, login_data, format='json')
+
+        self.assertEqual(response.status_code, 400)
+
+    def test_login_missing_password(self):
+        """Test login failure with missing password - status code 400"""
+        login_url = reverse('login')
+        login_data = {
+            'username': 'someuser'
+        }
+
+        response = self.client.post(login_url, login_data, format='json')
+
+        self.assertEqual(response.status_code, 400)
+
+    def test_login_empty_credentials(self):
+        """Test login failure with empty credentials - status code 400"""
+        login_url = reverse('login')
+        login_data = {
+            'username': '',
+            'password': ''
+        }
+
+        response = self.client.post(login_url, login_data, format='json')
+
+        self.assertEqual(response.status_code, 400)
