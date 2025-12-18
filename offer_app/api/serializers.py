@@ -11,6 +11,8 @@ class OfferDetailSerializer(serializers.ModelSerializer):
     Represents a specific tier (basic, standard, premium) of an offer
     with pricing, delivery time, and features.
     """
+    features = serializers.ListField(child=serializers.CharField())
+
 
     class Meta:
         model = OfferDetail
@@ -212,7 +214,7 @@ class OfferSerializer(serializers.ModelSerializer):
             data['details'] = [
                 {
                     'id': details.id,
-                    'url': reverse('offers-detail', args=[details.id], request=request),
+                    'url': reverse('offer-details', args=[details.id], request=request),
                 }
                 for details in instance.details.all()
             ]

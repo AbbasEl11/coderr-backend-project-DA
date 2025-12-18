@@ -25,8 +25,8 @@ class OrderSerializer(serializers.ModelSerializer):
         source='offer_detail.delivery_time_in_days', read_only=True)
     price = serializers.IntegerField(
         source='offer_detail.price', read_only=True)
-    features = serializers.CharField(
-        source='offer_detail.features', read_only=True)
+    features = serializers.ListField(
+        child=serializers.CharField(), source='offer_detail.features', read_only=True)
     offer_type = serializers.CharField(
         source='offer_detail.offer_type', read_only=True)
     

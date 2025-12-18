@@ -74,34 +74,19 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### 4. Set Up Environment Variables
-
-Create a `.env` file in the project root directory:
-
-```env
-SECRET_KEY=your-secret-key-here
-DEBUG=True
-```
-
-**Generate a secure SECRET_KEY:**
-```bash
-python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"
-```
-
-### 5. Run Migrations
+### 4. Run Migrations
 
 ```bash
-python manage.py makemigrations
 python manage.py migrate
 ```
 
-### 6. Create a Superuser (Optional)
+### 5. Create a Superuser (Optional)
 
 ```bash
 python manage.py createsuperuser
 ```
 
-### 7. Start the Development Server
+### 6. Start the Development Server
 
 ```bash
 python manage.py runserver
@@ -242,13 +227,6 @@ Content-Type: application/json
 ```
 
 ## ⚙️ Configuration
-
-### Environment Variables
-
-| Variable | Description | Required | Default |
-|----------|-------------|----------|---------|
-| `SECRET_KEY` | Django secret key for cryptographic signing | Yes | - |
-| `DEBUG` | Enable/disable debug mode | No | `True` |
 
 ### REST Framework Settings
 
@@ -421,13 +399,11 @@ http://127.0.0.1:8000/api/
 
 ## 🔐 Security Considerations
 
-- Keep your `SECRET_KEY` secure and never commit it to version control
-- Set `DEBUG = False` in production
 - Configure `ALLOWED_HOSTS` properly for production deployment
-- Use environment variables for sensitive configuration
 - Implement proper CORS settings for production (avoid `CORS_ALLOW_ALL_ORIGINS = True`)
 - Use HTTPS in production environments
 - Regularly update dependencies to patch security vulnerabilities
+- Use environment variables for sensitive configuration in production
 
 ## 🤝 Contribution Guidelines
 

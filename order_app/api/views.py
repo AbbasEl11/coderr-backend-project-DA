@@ -22,6 +22,19 @@ class OrderViewSet(viewsets.ModelViewSet):
     serializer_class = OrderSerializer
     queryset = None
 
+    def initial(self, request, *args, **kwargs):
+        """
+        Runs before any action - checks if order exists before permission check.
+        
+        Raises:
+            Http404: If order doesn't exist (before permission check)
+        """
+        if self.action in ['retrieve', 'update', 'partial_update', 'destroy']:
+            pk = self.kwargs.get('pk')
+            if pk:
+                get_object_or_404(Order, pk=pk)
+        super().initial(request, *args, **kwargs)
+
     def get_permissions(self):
         """
         Get permission classes based on action.
