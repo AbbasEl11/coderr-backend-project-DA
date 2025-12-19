@@ -74,19 +74,41 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### 4. Run Migrations
+### 4. Set Up Environment Variables
+
+Create a `.env` file from the template:
+
+**Windows:**
+```bash
+copy .env.template .env
+```
+
+**macOS/Linux:**
+```bash
+cp .env.template .env
+```
+
+Then edit the `.env` file and generate a secure SECRET_KEY:
+
+```bash
+python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"
+```
+
+Copy the generated key and replace `your-secret-key-here` in your `.env` file.
+
+### 5. Run Migrations
 
 ```bash
 python manage.py migrate
 ```
 
-### 5. Create a Superuser (Optional)
+### 6. Create a Superuser (Optional)
 
 ```bash
 python manage.py createsuperuser
 ```
 
-### 6. Start the Development Server
+### 7. Start the Development Server
 
 ```bash
 python manage.py runserver
